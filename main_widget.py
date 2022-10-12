@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import sys
 import os
+
+
 if hasattr(sys, 'frozen'):
     os.environ['PATH'] = sys._MEIPASS + ";" + os.environ['PATH']
 from PyQt5.QtWidgets import * #QApplication, QWidget, QPushButton, QMainWindow, QVBoxLayout, QHBoxLayout
@@ -61,6 +63,8 @@ class CMainWidget(QWidget, cUi):
         self.trans_value = 0
         self.trans_dialog = None
         self.trans_signal.connect(self.trans_slot)
+        # change to fast model
+        self.toggle_fast = False
 
         vbox = QVBoxLayout()
         for i in range(self.side):
@@ -139,6 +143,10 @@ class CMainWidget(QWidget, cUi):
             name, boxes = image_win.get_info()
             if name is not None and len(name) > 0:
                 self.label_info[name] = boxes
+                
+                
+    def solt_btn_open(self):
+        pass
 
     def slot_btn_open(self):
         self.image_dir = QFileDialog.getExistingDirectory(self, u"选择标定图片文件夹", os.getcwd())
@@ -152,7 +160,21 @@ class CMainWidget(QWidget, cUi):
                 self.label_info[str(img_name)] = None
 
             self.label_file = self.image_dir + "/label.txt"
-
+            # 按照名称排序
+            tem = {}
+            # def cmpare(x, y):
+            #     x = int(x.split('.')[0])
+            #     y = int(y.split('.')[0])
+            #     if x>y:
+            #         return 1
+            #     elif x==y:
+            #         return 0
+            #     else:
+            #         return -1
+            for i in sorted(self.label_info, key=lambda x: int(x.split('.')[0])):
+                tem[i] = self.label_info[i]
+            self.label_info = tem
+                
             print("slot_btn_open:", "total images:", len(self.label_info))
 
             self.read_label_file()

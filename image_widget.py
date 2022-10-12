@@ -82,7 +82,7 @@ class CImageWidget(QWidget, cUi):
                 self.box_list = box_list
             else:
                 self.box_list = []
-        self.update()
+        self.update() # 重绘事件，也就是触发paintEvent函数。
 
     def set_current_cls(self, cls):
         self.current_box[4] = cls
