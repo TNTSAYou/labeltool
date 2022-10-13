@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from email.mime import base
 import sys
 import os
+from xml.dom.expatbuilder import parseString
 
 
 if hasattr(sys, 'frozen'):
@@ -65,7 +67,10 @@ class CMainWidget(QWidget, cUi):
         self.trans_signal.connect(self.trans_slot)
         # change to fast model
         self.toggle_fast = False
-
+        # base_box
+        self.base_box = '0.jpg'
+        self.now_image_name = []
+        
         vbox = QVBoxLayout()
         for i in range(self.side):
             hbox = QHBoxLayout()
@@ -82,6 +87,7 @@ class CMainWidget(QWidget, cUi):
         self.btn_back.clicked.connect(self.slot_btn_pre)
         self.btn_next.clicked.connect(self.slot_btn_next)
         self.edit_cls.textChanged.connect(self.slot_edit_change)
+        self.btn_to_fast.clicked.connect(self.solt_btn_fast)
         
         
         self.btn_back.hide()
@@ -145,11 +151,22 @@ class CMainWidget(QWidget, cUi):
                 self.label_info[name] = boxes
                 
                 
-    def solt_btn_open(self):
-        pass
+    def solt_btn_fast(self):
+        self.toggle_fast = not self.toggle_fast
+        if self.toggle_fast:
+            self.label_model.setText('Fast')
+            assert(len(self.label_info[self.base_box]) > 0)
+            base_box = self.label_info[self.base_box]
+            for i in range(self.total):
+                self.image_widgets[i].change_fast(base_box)
+        else:
+            self.label_model.setText('Normal')
+            for i in range(self.total):
+                self.image_widgets[i].change_fast(None)
+            
 
     def slot_btn_open(self):
-        self.image_dir = QFileDialog.getExistingDirectory(self, u"选择标定图片文件夹", os.getcwd())
+        self.image_dir = QFileDialog.getExistingDirectory(self, u"选择标定图片文件夹", r'D:\YJS\h2o\h2o\3')
         if os.path.exists(self.image_dir):
             self.btn_back.show()
             self.btn_next.show()
@@ -179,6 +196,35 @@ class CMainWidget(QWidget, cUi):
 
             self.read_label_file()
             self.slot_btn_next()
+
+    def update_base_box(self, index):
+        self.base_box = self.now_image_name[index]
+        assert(len(self.label_info[self.base_box]) > 0)
+        base_box = self.label_info[self.base_box]
+        for i in range(self.total):
+            self.image_widgets[i].change_base_box(base_box)
+            
+        QMessageBox.information(self, u"提示", u"baseBox变为"+self.now_image_name[index], QMessageBox.Yes)
+        
+
+    def keyPressEvent(self, e):
+        if(e.key() == Qt.Key_D):
+            self.slot_btn_next()
+        if(e.key() == Qt.Key_A):
+            self.slot_btn_pre()
+            
+        if(e.key() == Qt.Key_1):
+            self.update_base_box(0)
+        if(e.key() == Qt.Key_2):
+            self.update_base_box(1)
+        if(e.key() == Qt.Key_3):
+            self.update_base_box(2)
+        if(e.key() == Qt.Key_4):
+            self.update_base_box(3)
+            
+        if(e.key() == Qt.Key_S):
+            self.slot_btn_save()
+            
 
     def slot_btn_next(self):
         self.save_box_info()
@@ -266,12 +312,17 @@ class CMainWidget(QWidget, cUi):
         QMessageBox.critical(self, u"提示", u"VOC数据集转换正在开发中...", QMessageBox.Yes)
 
     def slot_edit_change(self):
-        for image_win in self.image_widgets:
-            image_win.set_current_cls(int(self.edit_cls.text()))
+        try:
+            a = int(self.edit_cls.text())
+            for image_win in self.image_widgets:
+                image_win.set_current_cls(a)
+        except:
+            return
 
     def slot_btn_save(self):
         self.save_box_info()
         self.write_label_file()
+        QMessageBox.critical(self, u"提示", u"已保存", QMessageBox.Yes)
 
         
     def update_batch_index(self, next=True, pre=False):
@@ -300,6 +351,7 @@ class CMainWidget(QWidget, cUi):
                 image_names = list(self.label_info.keys())[(self.batch_index-1) * self.total: (self.batch_index-1) * self.total + self.total]
 
         self.label_jindu.setText('%d/%d'%(self.batch_index, self.total_batch))
+        self.now_image_name = image_names
         return image_names
 
         

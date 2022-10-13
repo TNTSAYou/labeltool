@@ -13,6 +13,7 @@ import os
 import cv2
 import math
 from PIL import Image
+import random
 
 # ui配置文件
 cUi, cBase = uic.loadUiType("image_widget.ui")
@@ -54,9 +55,32 @@ class CImageWidget(QWidget, cUi):
         #当前鼠标信息
         self.current_x = 0
         self.current_y = 0
-
+        
+        #是否切换为快速模式
+        self.toggle_fast = False
+        
+        #快速模式下的相关参数
+        self.base_box = []
+        self.base_center = []
+        
     def closeEvent(self, event):
         pass
+    
+    
+    def change_fast(self, base_box):
+        self.toggle_fast = not self.toggle_fast
+        if self.toggle_fast:
+            self.base_box = base_box
+            # 这里默认0为烟雾框，1为源点框,移动的时候跟随源点框的移动而移动 (x,y)
+            self.base_center = [(base_box[1][0]+base_box[1][2])/2, (base_box[1][1]+base_box[1][3])/2]
+        else:
+            pass
+    
+    def change_base_box(self, base_box):
+        self.base_box = base_box
+        # 这里默认0为烟雾框，1为源点框,移动的时候跟随源点框的移动而移动 (x,y)
+        self.base_center = [(base_box[1][0]+base_box[1][2])/2, (base_box[1][1]+base_box[1][3])/2]
+        
 
     def set_info(self, image_path, box_list=None):
         if image_path is None:
@@ -157,19 +181,49 @@ class CImageWidget(QWidget, cUi):
         self.draw_line(painter)
 
     def mousePressEvent(self, e):
-        if self.img is None:
-            return
-        if e.button() == QtCore.Qt.LeftButton:
-            self.start_label = True
-            self.current_box[0] = e.pos().x() * self.img.width() / self.width()
-            self.current_box[1] = e.pos().y() * self.img.height() / self.height()
-            self.current_box[2] = e.pos().x() * self.img.width() / self.width()
-            self.current_box[3] = e.pos().y() * self.img.height() / self.height()
-        if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
-            self.box_list.pop()
-        self.update()
+        if not self.toggle_fast:
+            if self.img is None:
+                return
+            if e.button() == QtCore.Qt.LeftButton:
+                self.start_label = True
+                self.current_box[0] = e.pos().x() * self.img.width() / self.width()
+                self.current_box[1] = e.pos().y() * self.img.height() / self.height()
+                self.current_box[2] = e.pos().x() * self.img.width() / self.width()
+                self.current_box[3] = e.pos().y() * self.img.height() / self.height()
+            if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
+                self.box_list.pop()
+            self.update()
+        # fast模式下 点击鼠标就会将源点框的中心移动到鼠标点击的地方
+        else:
+            if self.img is None:
+                return
+            if e.button() == QtCore.Qt.LeftButton:
+                self.start_label = False
+                now_x = e.pos().x() * self.img.width() / self.width()
+                now_y = e.pos().y() * self.img.height() / self.height()
+                diff_x = now_x - self.base_center[0]
+                diff_y = now_y - self.base_center[1]
+                tem = [0,0,0,0,0]
+                for i in self.base_box:
+                    tem[0] = i[0] + diff_x
+                    tem[1] = i[1] + diff_y
+                    tem[2] = i[2] + diff_x
+                    tem[3] = i[3] + diff_y
+                    tem[4] = i[4]
+                    if self.box_list.__len__() == 0:
+                        tem[0] = max(tem[0]+random.uniform(-2, 2), 0)
+                        tem[1] = max(tem[1]+random.uniform(-5.0, 5.0), 0)
+                        tem[2] = min(tem[2]+random.uniform(-1.5, 1.5),self.img.width())
+                        tem[3] = min(tem[3]+random.uniform(-3, 3),self.img.height())
+                    # 这里要使用深度复制，否则为浅复制（引用）会导致两个框的数值一样
+                    self.box_list.append(copy.deepcopy(tem))
+            if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
+                self.box_list = []
+            self.update()
+                
 
     def mouseMoveEvent(self, e):
+        
         if self.img is None:
             return
         self.current_box[2] = e.pos().x() * self.img.width() / self.width()
@@ -180,6 +234,8 @@ class CImageWidget(QWidget, cUi):
         self.update()
 
     def mouseReleaseEvent(self, e):
+        if self.toggle_fast:
+            return
         if self.img is None:
             return
         x1 = e.pos().x()

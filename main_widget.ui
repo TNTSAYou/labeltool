@@ -104,6 +104,13 @@
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label_model">
+         <property name="text">
+          <string>Normal</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="label_jindu_name">
          <property name="text">
           <string>进度：</string>
