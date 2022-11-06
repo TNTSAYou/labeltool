@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from email.mime import base
+from errno import ESTALE
 import sys
 import os
 from xml.dom.expatbuilder import parseString
@@ -59,7 +60,7 @@ class CMainWidget(QWidget, cUi):
         self.label_info = {}
         self.image_widgets = []
         self.batch_index = 0
-        self.side = 2
+        self.side = 1
         self.total = self.side*self.side
         self.trans_process = None
         self.trans_value = 0
@@ -71,6 +72,10 @@ class CMainWidget(QWidget, cUi):
         self.base_box = '0.jpg'
         self.now_image_name = []
         
+        #change to fixup
+        self.toggle_fixup = False
+
+        
         vbox = QVBoxLayout()
         for i in range(self.side):
             hbox = QHBoxLayout()
@@ -81,14 +86,14 @@ class CMainWidget(QWidget, cUi):
         self.frame.setLayout(vbox)
         self.btn_open.clicked.connect(self.slot_btn_open)
         self.btn_save.clicked.connect(self.slot_btn_save)
-        self.btn_to_coco.clicked.connect(self.slot_btn_to_coco)
-        self.btn_to_voc.clicked.connect(self.slot_btn_to_voc)
-        self.btn_to_yolov6.clicked.connect(self.slot_btn_to_yolov6)
+        # self.btn_to_coco.clicked.connect(self.slot_btn_to_coco)
+        # self.btn_to_voc.clicked.connect(self.slot_btn_to_voc)
+        # self.btn_to_yolov6.clicked.connect(self.slot_btn_to_yolov6)
         self.btn_back.clicked.connect(self.slot_btn_pre)
         self.btn_next.clicked.connect(self.slot_btn_next)
         self.edit_cls.textChanged.connect(self.slot_edit_change)
         self.btn_to_fast.clicked.connect(self.solt_btn_fast)
-        
+        self.btn_to_fixup.clicked.connect(self.solt_btn_fixup)
         
         self.btn_back.hide()
         self.btn_next.hide()
@@ -163,10 +168,23 @@ class CMainWidget(QWidget, cUi):
             self.label_model.setText('Normal')
             for i in range(self.total):
                 self.image_widgets[i].change_fast(None)
+                
+    def solt_btn_fixup(self):
+        self.toggle_fixup = not self.toggle_fixup
+        if self.toggle_fixup:
+            self.label_model.setText('Fixup')
+            
+            for i in range(self.total):
+                self.image_widgets[i].change_fixup(0)
+                
+        else:
+            self.label_model.setText('Normal')
+            for i in range(self.total):
+                self.image_widgets[i].change_fixup(None)
             
 
     def slot_btn_open(self):
-        self.image_dir = QFileDialog.getExistingDirectory(self, u"选择标定图片文件夹", r'D:\YJS\h2o\h2o\3')
+        self.image_dir = QFileDialog.getExistingDirectory(self, u"选择标定图片文件夹", r'D:\YJS\h2o\h2o\1')
         if os.path.exists(self.image_dir):
             self.btn_back.show()
             self.btn_next.show()
@@ -206,26 +224,41 @@ class CMainWidget(QWidget, cUi):
             
         QMessageBox.information(self, u"提示", u"baseBox变为"+self.now_image_name[index], QMessageBox.Yes)
         
+    def update_base_label(self, index):
+        base_box = self.now_image_name[0]
+        base_box = self.label_info[base_box]
+        for i in range(self.total):
+            self.image_widgets[i].change_base_label(index, base_box[1]) 
+            #self.image_widgets[i].change_base_label(index) 
+
+        QMessageBox.information(self, u"提示", u"baselabel变为"+str(index))
 
     def keyPressEvent(self, e):
         if(e.key() == Qt.Key_D):
             self.slot_btn_next()
         if(e.key() == Qt.Key_A):
             self.slot_btn_pre()
-            
-        if(e.key() == Qt.Key_1):
-            self.update_base_box(0)
-        if(e.key() == Qt.Key_2):
-            self.update_base_box(1)
-        if(e.key() == Qt.Key_3):
-            self.update_base_box(2)
-        if(e.key() == Qt.Key_4):
-            self.update_base_box(3)
-            
+        
         if(e.key() == Qt.Key_S):
             self.slot_btn_save()
             
+        if self.toggle_fast:
+            if(e.key() == Qt.Key_1):
+                self.update_base_box(0)
+            if(e.key() == Qt.Key_2):
+                self.update_base_box(1)
+            if(e.key() == Qt.Key_3):
+                self.update_base_box(2)
+            if(e.key() == Qt.Key_4):
+                self.update_base_box(3)
+                
+        if self.toggle_fixup:
+            if(e.key() == Qt.Key_1):
+                self.update_base_label(0)
+            if(e.key() == Qt.Key_2):
+                self.update_base_label(1)
 
+                
     def slot_btn_next(self):
         self.save_box_info()
         image_names = self.update_batch_index(next=True, pre=False)

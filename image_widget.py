@@ -63,6 +63,14 @@ class CImageWidget(QWidget, cUi):
         self.base_box = []
         self.base_center = []
         
+        #是否切换到修改模式
+        self.toggle_fixup = False
+        
+        #当前要修改的检测框
+        self.base_label = 0
+        self.base_leak_rec = []
+
+        
     def closeEvent(self, event):
         pass
     
@@ -74,6 +82,7 @@ class CImageWidget(QWidget, cUi):
             # 这里默认0为烟雾框，1为源点框,移动的时候跟随源点框的移动而移动 (x,y)
             self.base_center = [(base_box[1][0]+base_box[1][2])/2, (base_box[1][1]+base_box[1][3])/2]
         else:
+            self.toggle_fast = False
             pass
     
     def change_base_box(self, base_box):
@@ -81,7 +90,19 @@ class CImageWidget(QWidget, cUi):
         # 这里默认0为烟雾框，1为源点框,移动的时候跟随源点框的移动而移动 (x,y)
         self.base_center = [(base_box[1][0]+base_box[1][2])/2, (base_box[1][1]+base_box[1][3])/2]
         
-
+    def change_fixup(self, base_label):
+        self.toggle_fixup = not self.toggle_fixup
+        if self.toggle_fixup:
+            self.base_label = base_label  
+        else:
+            pass
+        
+    def change_base_label(self, base_label, base_leak_rec = None):
+        if base_label >= len(self.box_list):
+            return
+        self.base_leak_rec = base_leak_rec
+        self.base_label = base_label
+        
     def set_info(self, image_path, box_list=None):
         if image_path is None:
             self.img_path = ''
@@ -181,10 +202,13 @@ class CImageWidget(QWidget, cUi):
         self.draw_line(painter)
 
     def mousePressEvent(self, e):
-        if not self.toggle_fast:
+        #正常模式下的操作
+        if not self.toggle_fast and not self.toggle_fixup:
             if self.img is None:
                 return
             if e.button() == QtCore.Qt.LeftButton:
+                # 为什么这里两个坐标的获得方式一样呢？  鼠标按下左键一直不松的事件坐标是什么样的？？？这里只是初始化四个坐标而已，真正有意义的
+                # 还是0，1
                 self.start_label = True
                 self.current_box[0] = e.pos().x() * self.img.width() / self.width()
                 self.current_box[1] = e.pos().y() * self.img.height() / self.height()
@@ -193,33 +217,83 @@ class CImageWidget(QWidget, cUi):
             if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
                 self.box_list.pop()
             self.update()
-        # fast模式下 点击鼠标就会将源点框的中心移动到鼠标点击的地方
+        
         else:
-            if self.img is None:
-                return
-            if e.button() == QtCore.Qt.LeftButton:
-                self.start_label = False
-                now_x = e.pos().x() * self.img.width() / self.width()
-                now_y = e.pos().y() * self.img.height() / self.height()
-                diff_x = now_x - self.base_center[0]
-                diff_y = now_y - self.base_center[1]
-                tem = [0,0,0,0,0]
-                for i in self.base_box:
-                    tem[0] = i[0] + diff_x
-                    tem[1] = i[1] + diff_y
-                    tem[2] = i[2] + diff_x
-                    tem[3] = i[3] + diff_y
-                    tem[4] = i[4]
-                    if self.box_list.__len__() == 0:
-                        tem[0] = max(tem[0]+random.uniform(-2, 2), 0)
-                        tem[1] = max(tem[1]+random.uniform(-5.0, 5.0), 0)
-                        tem[2] = min(tem[2]+random.uniform(-1.5, 1.5),self.img.width())
-                        tem[3] = min(tem[3]+random.uniform(-3, 3),self.img.height())
-                    # 这里要使用深度复制，否则为浅复制（引用）会导致两个框的数值一样
-                    self.box_list.append(copy.deepcopy(tem))
-            if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
-                self.box_list = []
-            self.update()
+            # fast模式下 点击鼠标就会将源点框的中心移动到鼠标点击的地方
+            if self.toggle_fast:
+                if self.img is None:
+                    return
+                if e.button() == QtCore.Qt.LeftButton:
+                    self.start_label = False
+                    now_x = e.pos().x() * self.img.width() / self.width()
+                    now_y = e.pos().y() * self.img.height() / self.height()
+                    diff_x = now_x - self.base_center[0]
+                    diff_y = now_y - self.base_center[1]
+                    tem = [0,0,0,0,0]
+                    for i in self.base_box:
+                        tem[0] = i[0] + diff_x
+                        tem[1] = i[1] + diff_y
+                        tem[2] = i[2] + diff_x
+                        tem[3] = i[3] + diff_y
+                        tem[4] = i[4]
+                        if self.box_list.__len__() == 0:
+                            tem[0] = max(tem[0]+random.uniform(-2, 2), 0)
+                            tem[1] = max(tem[1]+random.uniform(-5.0, 5.0), 0)
+                            tem[2] = min(tem[2]+random.uniform(-1.5, 1.5),self.img.width())
+                            tem[3] = min(tem[3]+random.uniform(-3, 3),self.img.height())
+                        # 这里要使用深度复制，否则为浅复制（引用）会导致两个框的数值一样
+                        self.box_list.append(copy.deepcopy(tem))
+                    # if len(self.box_list) < 2:
+                    #     pass
+                    # else:
+                    #     self.box_list[1][0] = self.box_list[1][0] + diff_x
+                    #     self.box_list[1][1] = self.box_list[1][1] + diff_y
+                    #     self.box_list[1][2] = self.box_list[1][2] + diff_x
+                    #     self.box_list[1][3] = self.box_list[1][3] + diff_y
+                    
+                if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
+                    self.box_list = []
+                self.update()
+                
+            # fixup模式下，点击鼠标，会移动base_label的检测框，判断将更靠近鼠标点击处的一角移动到鼠标点击的地方
+            elif self.toggle_fixup:
+                if self.img is None or self.base_label>=len(self.box_list):
+                    return
+                if e.button() == QtCore.Qt.LeftButton:
+                    self.start_label = False
+                    now_x = e.pos().x() * self.img.width() / self.width()
+                    now_y = e.pos().y() * self.img.height() / self.height()
+                    fix_box = self.box_list[self.base_label]
+                    if self.base_label == 1:
+                        # base_center = [(self.base_leak_rec[0]+self.base_leak_rec[2])/2, (self.base_leak_rec[1]+self.base_leak_rec[3])/2]
+                        # diff_x = now_x - base_center[0]
+                        # diff_y = now_y - base_center[1]
+                        diff_x = now_x - self.base_leak_rec[0]
+                        diff_y = now_y - self.base_leak_rec[1]
+                        fix_box[0] = now_x
+                        fix_box[1] = now_y
+                        fix_box[2] = self.base_leak_rec[2] + diff_x
+                        fix_box[3] = self.base_leak_rec[3] + diff_y
+                        pass
+                    else:    
+                        loc_now = now_x + now_y
+                        loc_one = fix_box[0]+fix_box[1]
+                        loc_tow = fix_box[2]+fix_box[3]
+                        if abs(loc_one - loc_now) < abs(loc_tow - loc_now):
+                            fix_box[0] = now_x
+                            fix_box[1] = now_y
+                        else:
+                            fix_box[2] = now_x
+                            fix_box[3] = now_y
+                    self.box_list[self.base_label] = fix_box
+                    
+                if e.button() == QtCore.Qt.RightButton and len(self.box_list) > 0:
+                    del self.box_list[self.base_label]
+                
+                self.update
+                    
+                    
+                    
                 
 
     def mouseMoveEvent(self, e):
@@ -234,7 +308,7 @@ class CImageWidget(QWidget, cUi):
         self.update()
 
     def mouseReleaseEvent(self, e):
-        if self.toggle_fast:
+        if self.toggle_fast or self.toggle_fixup:
             return
         if self.img is None:
             return

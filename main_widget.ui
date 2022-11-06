@@ -62,7 +62,7 @@
          </property>
         </widget>
        </item>
-       <item>
+       <!-- <item>
         <widget class="QPushButton" name="btn_to_coco">
          <property name="text">
           <string>转换为COCO格式</string>
@@ -82,11 +82,18 @@
           <string>转换为YoloV6格式</string>
          </property>
         </widget>
-       </item>
+       </item> -->
        <item>
         <widget class="QPushButton" name="btn_to_fast">
          <property name="text">
           <string>快速模式</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btn_to_fixup">
+         <property name="text">
+          <string>修改模式</string>
          </property>
         </widget>
        </item>
